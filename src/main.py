@@ -1,23 +1,37 @@
+import os
+import subprocess
 from src.orchestrator import Orchestrator
 from src.reporter import Reporter
+from src.config import load_config
+from src.github_api import post_pr_comment
 
-orchestrator = Orchestrator()
-reporter = Reporter()
+def get_changed_files():
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD~1"],
+            capture_output=True, text=True
+        )
+        files = [f.strip() for f in result.stdout.splitlines() if f.strip()]
+        return files
+    except Exception:
+        return []
 
-test_files = ["tests/fixtures/secrets/fake_config.py", "tests/fixtures/vulnerable_deps/requirements.txt", "tests/fixtures/bad_configs/Dockerfile", "tests/fixtures/dangerous_patterns/fake_code.py"]
+def main():
+    config = load_config()
 
-config = {
-    "custom-patterns": [
-        {
-            "name": "Internal API Token",
-            "pattern": "INTERNAL_[A-Z]+_TOKEN",
-            "severity": "critical"
-        }
-    ]
-}
+    changed_files = get_changed_files()
 
-report = orchestrator.run(test_files, config)
+    if not changed_files:
+        print("No changed files found.")
+        return
 
-output = reporter.generate(report)
+    orchestrator = Orchestrator()
+    reporter = Reporter()
 
-print(output)
+    report = orchestrator.run(changed_files, config)
+    output = reporter.generate(report)
+
+    post_pr_comment(output)
+
+if __name__ == "__main__":
+    main()
