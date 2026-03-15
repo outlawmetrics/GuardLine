@@ -25,11 +25,13 @@ runs:
     - name: Run GuardLine
       shell: bash
       run: |
+        export SCAN_TARGET="${GITHUB_WORKSPACE}"
         cd /tmp/guardline
         python -m src.main
       env:
         GITHUB_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
 
 branding:
   icon: "shield"
