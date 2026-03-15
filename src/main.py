@@ -7,12 +7,24 @@ from src.github_api import post_pr_comment
 
 def get_changed_files():
     scan_target = os.environ.get("SCAN_TARGET", ".")
+    base_ref = os.environ.get("BASE_REF", "")
 
     try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD~1"],
-            capture_output=True, text=True, cwd=scan_target
-        )
+        if base_ref:
+            subprocess.run(
+                ["git", "fetch", "origin", base_ref],
+                capture_output=True, text=True, cwd=scan_target
+            )
+            result = subprocess.run(
+                ["git", "diff", "--name-only", f"origin/{base_ref}"],
+                capture_output=True, text=True, cwd=scan_target
+            )
+        else:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", "HEAD~1"],
+                capture_output=True, text=True, cwd=scan_target
+            )
+
         files = []
         for f in result.stdout.splitlines():
             f = f.strip()
