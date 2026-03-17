@@ -1,6 +1,8 @@
+import math
 import re
 import yaml
 from src.scanners.base import BaseScanner
+from src.scanners.secrets.entropy import calculate_entropy
 from src.models import Finding
 
 class SecretsScanner(BaseScanner):    
@@ -54,18 +56,22 @@ class SecretsScanner(BaseScanner):
 
             for line_number, line in enumerate(lines, start=1):
                 for pattern in all_patterns:
-                    if re.search(pattern["pattern"], line):
-                        findings.append(Finding(
-                            scanner=self.name,
-                            severity=pattern["severity"],
-                            confidence=pattern["confidence"],
-                            file=file_path,
-                            line=line_number,
-                            title=pattern["name"],
-                            detail=pattern["description"],
-                            remediation=pattern["remediation"],
-                            pattern_id=pattern["id"],
-                            metadata={"matched_line": line.strip()}
-                        ))
+                    match = re.search(pattern["pattern"], line)
+                    if match:
+                        matched_text = match.group()
+                        score = calculate_entropy(matched_text)
+                        if score > 3.0:
+                            findings.append(Finding(
+                                scanner=self.name,
+                                severity=pattern["severity"],
+                                confidence=pattern["confidence"],
+                                file=file_path,
+                                line=line_number,
+                                title=pattern["name"],
+                                detail=pattern["description"],
+                                remediation=pattern["remediation"],
+                                pattern_id=pattern["id"],
+                                metadata={"matched_line": line.strip(), "entropy_score": score}
+                            ))
 
         return findings
